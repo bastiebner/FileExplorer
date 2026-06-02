@@ -1,0 +1,16 @@
+Composite
+--IComponent
+----File : IComponent
+----Folder : IComponent o->IComponent
+
+Decorator
+--Decorator : IComponent o->IComponent
+----ReadOnlyDecorator : Decorator
+----FavoriteDecorator : Decorator
+----EncryptedDecorator : Decorator
+
+Observer
+-- IObserver
+---- ConsoleExplorerView
+-- Explorer o-> IComponent
+-- Explorer o-> IObserver
