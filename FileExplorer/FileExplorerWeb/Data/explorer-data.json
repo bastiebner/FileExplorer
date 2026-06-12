@@ -1,0 +1,76 @@
+{
+  "type": "Folder",
+  "name": "Root",
+  "content": "",
+  "readOnly": false,
+  "favorite": false,
+  "encrypted": false,
+  "children": [
+    {
+      "type": "Folder",
+      "name": "Documents",
+      "content": "",
+      "readOnly": false,
+      "favorite": false,
+      "encrypted": false,
+      "children": [
+        {
+          "type": "File",
+          "name": "todo.txt",
+          "content": "Mathe lernen",
+          "readOnly": false,
+          "favorite": false,
+          "encrypted": true,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "Folder",
+      "name": "Pictures",
+      "content": "",
+      "readOnly": false,
+      "favorite": false,
+      "encrypted": false,
+      "children": [
+        {
+          "type": "File",
+          "name": "image.png",
+          "content": "Bilddaten",
+          "readOnly": false,
+          "favorite": false,
+          "encrypted": false,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "Folder",
+      "name": "School",
+      "content": "",
+      "readOnly": false,
+      "favorite": false,
+      "encrypted": false,
+      "children": [
+        {
+          "type": "File",
+          "name": "sew.pdf",
+          "content": "sew skriptum",
+          "readOnly": false,
+          "favorite": false,
+          "encrypted": false,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "File",
+      "name": "notes.txt",
+      "content": "Hallo Welt",
+      "readOnly": true,
+      "favorite": true,
+      "encrypted": true,
+      "children": []
+    }
+  ]
+}

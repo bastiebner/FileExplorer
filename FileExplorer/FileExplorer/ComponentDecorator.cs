@@ -13,6 +13,7 @@ public abstract class ComponentDecorator : IComponent
     }
 
     public string Name => component.Name;
+    public IComponent WrappedComponent => component;
 
     public Folder? Parent
     {
@@ -27,7 +28,7 @@ public abstract class ComponentDecorator : IComponent
 
     public virtual void Delete()
     {
-        if (HasReadOnlyDecorator())
+        if (HasReadOnly())
         {
             throw new InvalidOperationException("Diese Datei ist schreibgeschuetzt.");
         }
@@ -42,6 +43,12 @@ public abstract class ComponentDecorator : IComponent
             throw new InvalidOperationException("Components koennen nur in Ordner verschoben werden.");
         }
 
+        if (Unwrap(component) is Folder sourceFolder
+            && (sourceFolder == targetFolder || sourceFolder.ContainsFolder(targetFolder)))
+        {
+            throw new InvalidOperationException("Ein Ordner kann nicht in sich selbst verschoben werden.");
+        }
+
         Parent?.Remove(this);
         targetFolder.Add(this);
     }
@@ -49,6 +56,21 @@ public abstract class ComponentDecorator : IComponent
     public virtual IComponent Copy()
     {
         return component.Copy();
+    }
+
+    public bool HasReadOnly()
+    {
+        return HasDecorator(decorator => decorator.readOnly);
+    }
+
+    public bool HasFavorite()
+    {
+        return HasDecorator(decorator => decorator.favorite);
+    }
+
+    public bool HasEncrypted()
+    {
+        return HasDecorator(decorator => decorator.encrypted);
     }
 
     protected string GetDecoratorText()
@@ -81,18 +103,28 @@ public abstract class ComponentDecorator : IComponent
         }
     }
 
-    private bool HasReadOnlyDecorator()
+    private bool HasDecorator(Func<ComponentDecorator, bool> check)
     {
-        if (readOnly)
+        if (check(this))
         {
             return true;
         }
 
         if (component is ComponentDecorator decoratedComponent)
         {
-            return decoratedComponent.HasReadOnlyDecorator();
+            return decoratedComponent.HasDecorator(check);
         }
 
         return false;
+    }
+
+    private static IComponent Unwrap(IComponent source)
+    {
+        while (source is ComponentDecorator decorator)
+        {
+            source = decorator.WrappedComponent;
+        }
+
+        return source;
     }
 }

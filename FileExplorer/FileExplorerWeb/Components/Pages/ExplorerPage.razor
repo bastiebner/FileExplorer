@@ -1,0 +1,314 @@
+@page "/explorer"
+@rendermode InteractiveServer
+@implements FileExplorer.IObserver
+@implements IDisposable
+@inject FileExplorerState ExplorerState
+
+<PageTitle>Datei Explorer</PageTitle>
+
+<main class="explorer-page">
+    <header class="explorer-header">
+        <div>
+            <h1>Datei Explorer</h1>
+            <p class="path-line">@GetPath()</p>
+        </div>
+        <button class="secondary-button" @onclick="GoBack" disabled="@(currentFolder.Parent is null)">Zur&uuml;ck</button>
+    </header>
+
+    <section class="create-area">
+        <h2>Neues Element erstellen</h2>
+        <div class="create-grid">
+            <label>
+                Typ
+                <select @bind="newElementType">
+                    <option value="File">File</option>
+                    <option value="Folder">Folder</option>
+                </select>
+            </label>
+            <label>
+                Name
+                <input @bind="newName" />
+            </label>
+            @if (newElementType == "File")
+            {
+                <label>
+                    Content
+                    <input @bind="newContent" />
+                </label>
+            }
+            <button class="primary-button" @onclick="CreateElement">Erstellen</button>
+        </div>
+    </section>
+
+    <section class="transfer-bar">
+        <button class="secondary-button" @onclick="PasteCopyHere" disabled="@(copySource is null)">Paste Copy Here</button>
+        <button class="secondary-button" @onclick="MoveHere" disabled="@(moveSource is null)">Move Here</button>
+        <span>@selectionMessage</span>
+    </section>
+
+    <section class="list-area">
+        <table class="explorer-table">
+            <thead>
+                <tr>
+                    <th>Typ/Icon</th>
+                    <th>Name</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (currentFolder.ChildComponents.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="empty-row">Dieser Ordner ist leer.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (FileExplorer.IComponent component in currentFolder.ChildComponents)
+                    {
+                        Folder? folder = GetFolder(component);
+
+                        <tr>
+                            <td class="icon-cell">
+                                <span>@GetTypeIcon(component)</span>
+                                <span>@GetDecoratorIcons(component)</span>
+                            </td>
+                            <td>@component.Name</td>
+                            <td>
+                                <div class="action-row">
+                                    @if (folder is not null)
+                                    {
+                                        <button @onclick="() => OpenFolder(folder)">&Ouml;ffnen</button>
+                                    }
+                                    <button @onclick="() => ReadComponent(component)">Read</button>
+                                    <button @onclick="() => DeleteComponent(component)">Delete</button>
+                                    <button @onclick="() => RememberCopy(component)">Copy</button>
+                                    <button @onclick="() => RememberMove(component)">Move</button>
+                                    @if (folder is null)
+                                    {
+                                        <button @onclick="() => AddReadOnly(component)">ReadOnly</button>
+                                    }
+                                    <button @onclick="() => AddFavorite(component)">Favorite</button>
+                                    <button @onclick="() => AddEncrypted(component)">Encrypted</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </section>
+
+    <section class="output-area">
+        <div>
+            <h2>Read-Ergebnis</h2>
+            <pre>@readOutput</pre>
+        </div>
+        <div>
+            <h2>Observer-Nachricht</h2>
+            <p>@lastMessage</p>
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <p class="error-message">@errorMessage</p>
+            }
+        </div>
+    </section>
+</main>
+
+@code {
+    private Folder currentFolder = null!;
+    private string newElementType = "File";
+    private string newName = string.Empty;
+    private string newContent = string.Empty;
+    private string readOutput = string.Empty;
+    private string lastMessage = string.Empty;
+    private string errorMessage = string.Empty;
+    private string selectionMessage = string.Empty;
+    private FileExplorer.IComponent? copySource;
+    private FileExplorer.IComponent? moveSource;
+
+    protected override void OnInitialized()
+    {
+        currentFolder = ExplorerState.Root;
+        ExplorerState.Manager.Attach(this);
+    }
+
+    public void Update(string message, FileExplorer.IComponent root)
+    {
+        lastMessage = message;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ExplorerState.Manager.Detach(this);
+    }
+
+    private void GoBack()
+    {
+        if (currentFolder.Parent is not null)
+        {
+            currentFolder = currentFolder.Parent;
+        }
+    }
+
+    private void OpenFolder(Folder folder)
+    {
+        currentFolder = folder;
+        errorMessage = string.Empty;
+    }
+
+    private void CreateElement()
+    {
+        RunAction(() =>
+        {
+            string name = string.IsNullOrWhiteSpace(newName) ? "Neues Element" : newName.Trim();
+            FileExplorer.IComponent component = newElementType == "Folder"
+                ? new Folder(name)
+                : new FileExplorer.File(name, newContent);
+
+            ExplorerState.Manager.Add(currentFolder, component);
+            newName = string.Empty;
+            newContent = string.Empty;
+        });
+    }
+
+    private void ReadComponent(FileExplorer.IComponent component)
+    {
+        readOutput = component.Read();
+        errorMessage = string.Empty;
+    }
+
+    private void DeleteComponent(FileExplorer.IComponent component)
+    {
+        RunAction(() => ExplorerState.Manager.Delete(component));
+    }
+
+    private void RememberCopy(FileExplorer.IComponent component)
+    {
+        copySource = component;
+        selectionMessage = $"Copy: {component.Name}";
+        errorMessage = string.Empty;
+    }
+
+    private void PasteCopyHere()
+    {
+        if (copySource is null)
+        {
+            return;
+        }
+
+        RunAction(() => ExplorerState.Manager.Copy(copySource, currentFolder));
+    }
+
+    private void RememberMove(FileExplorer.IComponent component)
+    {
+        moveSource = component;
+        selectionMessage = $"Move: {component.Name}";
+        errorMessage = string.Empty;
+    }
+
+    private void MoveHere()
+    {
+        if (moveSource is null)
+        {
+            return;
+        }
+
+        RunAction(() =>
+        {
+            if (GetFolder(moveSource) == currentFolder)
+            {
+                throw new InvalidOperationException("Ein Element kann nicht in sich selbst verschoben werden.");
+            }
+
+            ExplorerState.Manager.Move(moveSource, currentFolder);
+            moveSource = null;
+            selectionMessage = string.Empty;
+        });
+    }
+
+    private void AddReadOnly(FileExplorer.IComponent component)
+    {
+        RunAction(() => ExplorerState.Manager.Replace(component, new ReadOnlyDecorator(component)));
+    }
+
+    private void AddFavorite(FileExplorer.IComponent component)
+    {
+        RunAction(() => ExplorerState.Manager.Replace(component, new FavoriteDecorator(component)));
+    }
+
+    private void AddEncrypted(FileExplorer.IComponent component)
+    {
+        RunAction(() => ExplorerState.Manager.Replace(component, new EncryptedDecorator(component)));
+    }
+
+    private void RunAction(Action action)
+    {
+        try
+        {
+            errorMessage = string.Empty;
+            action();
+        }
+        catch (InvalidOperationException exception)
+        {
+            errorMessage = exception.Message;
+        }
+    }
+
+    private string GetPath()
+    {
+        Stack<string> names = new Stack<string>();
+        Folder? folder = currentFolder;
+
+        while (folder is not null)
+        {
+            names.Push(folder.Name);
+            folder = folder.Parent;
+        }
+
+        return string.Join(" / ", names);
+    }
+
+    private static Folder? GetFolder(FileExplorer.IComponent component)
+    {
+        while (component is ComponentDecorator decorator)
+        {
+            component = decorator.WrappedComponent;
+        }
+
+        return component as Folder;
+    }
+
+    private static MarkupString GetTypeIcon(FileExplorer.IComponent component)
+    {
+        return (MarkupString)(GetFolder(component) is null ? "&#x1F4C4;" : "&#x1F4C1;");
+    }
+
+    private static MarkupString GetDecoratorIcons(FileExplorer.IComponent component)
+    {
+        if (component is not ComponentDecorator decorator)
+        {
+            return (MarkupString)string.Empty;
+        }
+
+        List<string> icons = new List<string>();
+
+        if (decorator.HasReadOnly())
+        {
+            icons.Add("&#x1F6AB;");
+        }
+
+        if (decorator.HasFavorite())
+        {
+            icons.Add("&#x2B50;");
+        }
+
+        if (decorator.HasEncrypted())
+        {
+            icons.Add("&#x1F512;");
+        }
+
+        return (MarkupString)string.Join(" ", icons);
+    }
+}

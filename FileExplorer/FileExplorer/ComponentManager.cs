@@ -11,9 +11,14 @@ public class ComponentManager
         observers = new List<IObserver>();
     }
 
+    public IComponent Root => root;
+
     public void Attach(IObserver observer)
     {
-        observers.Add(observer);
+        if (!observers.Contains(observer))
+        {
+            observers.Add(observer);
+        }
     }
 
     public void Detach(IObserver observer)
@@ -56,6 +61,15 @@ public class ComponentManager
 
     public void Replace(Folder parent, IComponent oldComponent, IComponent newComponent)
     {
+        parent.Replace(oldComponent, newComponent);
+        Notify($"{oldComponent.Name} wurde dekoriert.");
+    }
+
+    public void Replace(IComponent oldComponent, IComponent newComponent)
+    {
+        Folder parent = oldComponent.Parent
+            ?? throw new InvalidOperationException($"{oldComponent.Name} hat keinen Parent-Ordner.");
+
         parent.Replace(oldComponent, newComponent);
         Notify($"{oldComponent.Name} wurde dekoriert.");
     }

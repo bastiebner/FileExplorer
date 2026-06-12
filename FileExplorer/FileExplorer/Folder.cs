@@ -14,6 +14,7 @@ public class Folder : IComponent
 
     public string Name { get; }
     public Folder? Parent { get; set; }
+    public IReadOnlyList<IComponent> ChildComponents => childComponents;
 
     public void Add(IComponent comp)
     {
@@ -64,6 +65,11 @@ public class Folder : IComponent
             throw new InvalidOperationException("Ordner koennen nur in andere Ordner verschoben werden.");
         }
 
+        if (targetFolder == this || ContainsFolder(targetFolder))
+        {
+            throw new InvalidOperationException("Ein Ordner kann nicht in sich selbst verschoben werden.");
+        }
+
         Parent?.Remove(this);
         targetFolder.Add(this);
     }
@@ -99,5 +105,23 @@ public class Folder : IComponent
     private static string GetIndent(int level)
     {
         return new string(' ', level * 2);
+    }
+
+    public bool ContainsFolder(Folder folder)
+    {
+        foreach (IComponent child in childComponents)
+        {
+            if (child == folder)
+            {
+                return true;
+            }
+
+            if (child is Folder childFolder && childFolder.ContainsFolder(folder))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

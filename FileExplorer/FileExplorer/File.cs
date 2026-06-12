@@ -11,6 +11,7 @@ public class File : IComponent
     }
 
     public string Name { get; }
+    public string Content => content;
     public Folder? Parent { get; set; }
 
     public string Read()
